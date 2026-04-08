@@ -1,0 +1,224 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MEMBER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum RoomStatus {
+  AVAILABLE
+  FULL
+  MAINTENANCE
+}
+
+enum MessOffStatus {
+  ACTIVE
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PAID
+  PARTIAL
+  UNPAID
+}
+
+enum PaymentMethod {
+  CASH
+  BANK
+  JAZZCASH
+  EASYPAISA
+  OTHER
+}
+
+enum GlobalMessStatus {
+  ON
+  OFF
+}
+
+model User {
+  id               Int            @id @default(autoincrement())
+  fullName         String
+  email            String?        @unique
+  cmsId            String?        @unique
+  phone            String?
+  passwordHash     String
+  role             UserRole
+  status           UserStatus     @default(ACTIVE)
+  roomId           Int?
+  joiningDate      DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  room             Room?          @relation(fields: [roomId], references: [id])
+  createdMenus     WeeklyMenu[]   @relation("WeeklyMenuCreatedBy")
+  mealEntries      MealEntry[]
+  messOffPeriods   MessOffPeriod[]
+  createdMessOff   MessOffPeriod[] @relation("MessOffCreatedBy")
+  createdHelpers   HelperCharge[] @relation("HelperChargeCreatedBy")
+  attendanceRecords Attendance[]
+  bills            Bill[]
+  payments         Payment[]      @relation("PaymentUser")
+  receivedPayments Payment[]      @relation("PaymentReceivedBy")
+}
+
+model Room {
+  id            Int        @id @default(autoincrement())
+  roomNumber    String     @unique
+  capacity      Int
+  occupiedCount Int        @default(0)
+  status        RoomStatus @default(AVAILABLE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  users         User[]
+}
+
+model HostelSetting {
+  id             Int              @id @default(autoincrement())
+  hostelName     String
+  breakfastPrice Float
+  lunchPrice     Float
+  dinnerPrice    Float
+  guestMealPrice Float
+  messStatus     GlobalMessStatus @default(ON)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model WeeklyMenu {
+  id            Int              @id @default(autoincrement())
+  weekStartDate DateTime
+  createdBy     Int
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  creator       User             @relation("WeeklyMenuCreatedBy", fields: [createdBy], references: [id])
+  items         WeeklyMenuItem[]
+}
+
+model WeeklyMenuItem {
+  id            Int        @id @default(autoincrement())
+  weeklyMenuId  Int
+  dayName       String
+  breakfast     String
+  lunch         String
+  dinner        String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  weeklyMenu    WeeklyMenu @relation(fields: [weeklyMenuId], references: [id], onDelete: Cascade)
+}
+
+model MealEntry {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  mealDate        DateTime
+  breakfastTaken  Boolean   @default(false)
+  lunchTaken      Boolean   @default(false)
+  dinnerTaken     Boolean   @default(false)
+  guestCount      Int       @default(0)
+  createdBy       Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, mealDate])
+}
+
+model MessOffPeriod {
+  id          Int            @id @default(autoincrement())
+  userId      Int
+  fromDate    DateTime
+  toDate      DateTime
+  reason      String?
+  status      MessOffStatus  @default(ACTIVE)
+  createdBy   Int
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user        User           @relation(fields: [userId], references: [id])
+  creator     User           @relation("MessOffCreatedBy", fields: [createdBy], references: [id])
+}
+
+model Attendance {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  attendanceDate  DateTime
+  isPresent       Boolean   @default(true)
+  remarks         String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, attendanceDate])
+}
+
+model HelperCharge {
+  id               Int       @id @default(autoincrement())
+  month            Int
+  year             Int
+  totalAmount      Float
+  perMemberAmount  Float
+  notes            String?
+  createdBy        Int
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  creator          User      @relation("HelperChargeCreatedBy", fields: [createdBy], references: [id])
+}
+
+model Bill {
+  id              Int           @id @default(autoincrement())
+  userId          Int
+  month           Int
+  year            Int
+  breakfastUnits  Int           @default(0)
+  lunchUnits      Int           @default(0)
+  dinnerUnits     Int           @default(0)
+  guestUnits      Int           @default(0)
+  helperCharge    Float         @default(0)
+  extraCharges    Float         @default(0)
+  totalAmount     Float         @default(0)
+  paidAmount      Float         @default(0)
+  dueAmount       Float         @default(0)
+  paymentStatus   PaymentStatus @default(UNPAID)
+  generatedAt     DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user            User          @relation(fields: [userId], references: [id])
+  payments        Payment[]
+
+  @@unique([userId, month, year])
+}
+
+model Payment {
+  id             Int            @id @default(autoincrement())
+  billId         Int
+  userId         Int
+  amount         Float
+  paymentMethod  PaymentMethod
+  paymentDate    DateTime
+  referenceNo    String?
+  notes          String?
+  receivedBy     Int?
+  createdAt      DateTime       @default(now())
+
+  bill           Bill           @relation(fields: [billId], references: [id], onDelete: Cascade)
+  user           User           @relation("PaymentUser", fields: [userId], references: [id])
+  receiver       User?          @relation("PaymentReceivedBy", fields: [receivedBy], references: [id])
+}

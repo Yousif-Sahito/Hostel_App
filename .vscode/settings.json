@@ -1,0 +1,19 @@
+{
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 3306,
+            "driver": "MySQL",
+            "name": "mess_app",
+            "database": "hostel_mess_db",
+            "username": "root"
+        }
+    ],
+    "postman.settings.dotenv-detection-notification-visibility": false
+}
