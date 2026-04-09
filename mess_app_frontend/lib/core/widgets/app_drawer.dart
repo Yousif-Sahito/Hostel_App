@@ -49,7 +49,7 @@ class AppDrawer extends StatelessWidget {
                     title: 'Members',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(AppRoutes.members);
+                      context.push(AppRoutes.members);
                     },
                   ),
                   _drawerItem(
@@ -58,7 +58,7 @@ class AppDrawer extends StatelessWidget {
                     title: 'Rooms',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(AppRoutes.rooms);
+                      context.push(AppRoutes.rooms);
                     },
                   ),
                   _drawerItem(
@@ -67,7 +67,7 @@ class AppDrawer extends StatelessWidget {
                     title: 'Weekly Menu',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(AppRoutes.weeklyMenu);
+                      context.push(AppRoutes.weeklyMenu);
                     },
                   ),
                   _drawerItem(
@@ -76,7 +76,16 @@ class AppDrawer extends StatelessWidget {
                     title: 'Units',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(AppRoutes.meals);
+                      context.push(AppRoutes.meals);
+                    },
+                  ),
+                  _drawerItem(
+                    context,
+                    icon: Icons.analytics_outlined,
+                    title: 'Meal Units Summary',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.push(AppRoutes.mealUnitsSummary);
                     },
                   ),
                   _drawerItem(
@@ -85,7 +94,7 @@ class AppDrawer extends StatelessWidget {
                     title: 'Bills',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(AppRoutes.bills);
+                      context.push(AppRoutes.bills);
                     },
                   ),
                   _drawerItem(
@@ -94,7 +103,7 @@ class AppDrawer extends StatelessWidget {
                     title: 'Payment History',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(AppRoutes.paymentHistory);
+                      context.push(AppRoutes.paymentHistory);
                     },
                   ),
                   _drawerItem(
@@ -103,7 +112,7 @@ class AppDrawer extends StatelessWidget {
                     title: 'Mess Off',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(AppRoutes.messOff);
+                      context.push(AppRoutes.messOff);
                     },
                   ),
                   _drawerItem(
@@ -112,7 +121,7 @@ class AppDrawer extends StatelessWidget {
                     title: 'Settings',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(AppRoutes.settings);
+                      context.push(AppRoutes.settings);
                     },
                   ),
                 ] else ...[
@@ -122,7 +131,7 @@ class AppDrawer extends StatelessWidget {
                     title: 'Weekly Menu',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(AppRoutes.weeklyMenu);
+                      context.push(AppRoutes.weeklyMenu);
                     },
                   ),
                   _drawerItem(
@@ -131,7 +140,7 @@ class AppDrawer extends StatelessWidget {
                     title: 'My Units',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(AppRoutes.memberMeals);
+                      context.push(AppRoutes.memberMeals);
                     },
                   ),
                   _drawerItem(
@@ -140,7 +149,7 @@ class AppDrawer extends StatelessWidget {
                     title: 'My Bill',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(AppRoutes.memberBills);
+                      context.push(AppRoutes.memberBills);
                     },
                   ),
                   _drawerItem(
@@ -149,7 +158,7 @@ class AppDrawer extends StatelessWidget {
                     title: 'Meal Prices',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(AppRoutes.mealPrices);
+                      context.push(AppRoutes.mealPrices);
                     },
                   ),
                   _drawerItem(
@@ -158,7 +167,7 @@ class AppDrawer extends StatelessWidget {
                     title: 'Payment History',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(AppRoutes.paymentHistory);
+                      context.push(AppRoutes.paymentHistory);
                     },
                   ),
                   _drawerItem(
@@ -167,7 +176,7 @@ class AppDrawer extends StatelessWidget {
                     title: 'My Mess Off',
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(AppRoutes.memberMessOff);
+                      context.push(AppRoutes.memberMessOff);
                     },
                   ),
                 ],
@@ -178,7 +187,7 @@ class AppDrawer extends StatelessWidget {
                   title: 'Profile',
                   onTap: () {
                     Navigator.pop(context);
-                    context.go(AppRoutes.profile);
+                    context.push(AppRoutes.profile);
                   },
                 ),
               ],

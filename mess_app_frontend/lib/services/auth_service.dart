@@ -3,11 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthService {
-  /// Base URL for API - Update this with your actual server IP/domain
-  /// For Android Emulator: 'http://10.0.2.2:5000/api'
-  /// For iOS Simulator: 'http://localhost:5000/api'
-  /// For Physical Device: 'http://your-server-ip:5000/api'
-  static const String _baseUrl = 'http://10.0.2.2:5000/api'; // Default for Android emulator
+  /// Base URL for API - Updated to Render Production Server
+  /// Live Render Backend: https://messapp-backend-z05q.onrender.com/api
+  static const String _baseUrl = 'https://messapp-backend-z05q.onrender.com/api'; // Production Render URL
   static const String _tokenKey = 'auth_token';
 
   // Update FCM token

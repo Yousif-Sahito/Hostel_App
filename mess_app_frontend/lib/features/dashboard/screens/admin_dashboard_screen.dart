@@ -36,18 +36,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final provider = context.watch<DashboardProvider>();
     final data = provider.adminDashboard;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Dashboard'),
-        actions: [
-          IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh)),
-        ],
-      ),
-      drawer: const AppDrawer(),
-      body: SafeArea(
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Press logout to exit the app')),
+        );
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Admin Dashboard'),
+          actions: [
+            IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh)),
+          ],
+        ),
+        drawer: const AppDrawer(),
+        body: SafeArea(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [Colors.blue.shade50, Colors.white],
@@ -164,10 +172,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               ),
                               gridDelegate:
                                   const SliverGridDelegateWithMaxCrossAxisExtent(
-                                    maxCrossAxisExtent: 280,
+                                    maxCrossAxisExtent: 500,
                                     crossAxisSpacing: 16,
                                     mainAxisSpacing: 16,
-                                    childAspectRatio: 1.2,
+                                    childAspectRatio: 2.4,
                                   ),
                               itemCount: cards.length,
                               itemBuilder: (context, index) => cards[index],
@@ -178,8 +186,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ],
                   ),
                 ),
+            ),
+          ),
         ),
-      ),
-    );
+      );
   }
 }

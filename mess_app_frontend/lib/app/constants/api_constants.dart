@@ -1,5 +1,6 @@
 class ApiConstants {
-  static const baseUrl = 'http://localhost:5000/api';
+  // ✅ PRODUCTION - Render Backend (Live & Connected to Railway DB)
+  static const baseUrl = 'https://messapp-backend-z05q.onrender.com/api';
 
   static const login = '/auth/login';
   static const members = '/members';

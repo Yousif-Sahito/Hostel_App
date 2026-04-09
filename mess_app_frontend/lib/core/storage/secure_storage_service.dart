@@ -27,6 +27,18 @@ class SecureStorageService {
     return _storage.read(key: 'fullName');
   }
 
+  static Future<void> saveAdminCredentialsUpdated(bool updated) async {
+    await _storage.write(
+      key: 'admin_credentials_updated',
+      value: updated ? 'true' : 'false',
+    );
+  }
+
+  static Future<bool> getAdminCredentialsUpdated() async {
+    final value = await _storage.read(key: 'admin_credentials_updated');
+    return value == 'true';
+  }
+
   static Future<void> clear() async {
     await _storage.deleteAll();
   }

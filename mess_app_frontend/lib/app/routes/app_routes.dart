@@ -19,6 +19,8 @@ class AppRoutes {
   static const messOff = '/mess-off';
   static const memberMessOff = '/member-mess-off';
 
+  static const mealUnitsSummary = '/meal-units-summary';
+
   static const profile = '/profile';
   static const settings = '/settings';
 }

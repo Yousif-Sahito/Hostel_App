@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -12,11 +13,21 @@ import 'services/auth_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase and FCM
+  // Initialize Firebase first
+  try {
+    await Firebase.initializeApp();
+    debugPrint('✅ Firebase initialized successfully');
+  } catch (e, stackTrace) {
+    debugPrint('❌ Firebase initialization failed: $e');
+    debugPrint(stackTrace.toString());
+  }
+
+  // Initialize FCM after Firebase
   try {
     await FCMService().initialize();
+    debugPrint('✅ FCM initialized successfully');
   } catch (e, stackTrace) {
-    debugPrint('FCM initialization failed: $e');
+    debugPrint('❌ FCM initialization failed: $e');
     debugPrint(stackTrace.toString());
   }
 
@@ -38,7 +49,6 @@ class _MessAppState extends State<MessApp> {
     _sendInitialFCMToken();
   }
 
-  /// Send the current FCM token to backend on app startup
   Future<void> _sendInitialFCMToken() async {
     try {
       final token = await FCMService().getToken();
@@ -50,12 +60,10 @@ class _MessAppState extends State<MessApp> {
     }
   }
 
-  /// Listen for FCM token refresh and send new token to backend
   void _setupFCMTokenRefresh() {
     FCMService().onTokenRefresh((newToken) async {
       debugPrint('🔄 FCM token refreshed: $newToken');
       try {
-        // Send the new token to backend
         await AuthService.updateFCMToken(newToken);
       } catch (e) {
         debugPrint('❌ Error updating refreshed FCM token on backend: $e');

@@ -69,35 +69,43 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
     final provider = context.watch<DashboardProvider>();
     final data = provider.memberDashboard;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Member Dashboard'),
-        actions: [
-          IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh)),
-        ],
-      ),
-      drawer: const AppDrawer(),
-      body: SafeArea(
-        child: provider.isLoadingMember && data == null
-            ? const Center(child: CircularProgressIndicator())
-            : provider.memberErrorMessage != null && data == null
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    provider.memberErrorMessage!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 16),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Press logout to exit the app')),
+        );
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Member Dashboard'),
+          actions: [
+            IconButton(onPressed: _refresh, icon: const Icon(Icons.refresh)),
+          ],
+        ),
+        drawer: const AppDrawer(),
+        body: SafeArea(
+          child: provider.isLoadingMember && data == null
+              ? const Center(child: CircularProgressIndicator())
+              : provider.memberErrorMessage != null && data == null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      provider.memberErrorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 16),
+                    ),
                   ),
-                ),
-              )
-            : data == null
-            ? const Center(child: Text('No dashboard data found'))
-            : RefreshIndicator(
-                onRefresh: _refresh,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    int crossAxisCount = 1;
+                )
+              : data == null
+              ? const Center(child: Text('No dashboard data found'))
+              : RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      int crossAxisCount = 1;
 
                     if (constraints.maxWidth >= 1200) {
                       crossAxisCount = 3;
@@ -164,6 +172,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                 ),
               ),
       ),
-    );
+    ),
+  );
   }
 }
