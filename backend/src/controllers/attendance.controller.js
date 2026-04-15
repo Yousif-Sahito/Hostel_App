@@ -5,6 +5,7 @@ import { prisma } from "../config/prisma.js";
  */
 export const markAttendance = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const { userId, attendanceDate, isPresent, remarks } = req.body;
 
     if (!userId || !attendanceDate) {
@@ -15,8 +16,8 @@ export const markAttendance = async (req, res) => {
       });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: Number(userId) }
+    const user = await prisma.user.findFirst({
+      where: { id: Number(userId), hostelId }
     });
 
     if (!user) {
@@ -31,6 +32,7 @@ export const markAttendance = async (req, res) => {
 
     const existingAttendance = await prisma.attendance.findFirst({
       where: {
+        hostelId,
         userId: Number(userId),
         attendanceDate: date
       }
@@ -58,6 +60,7 @@ export const markAttendance = async (req, res) => {
     attendance = await prisma.attendance.create({
       data: {
         userId: Number(userId),
+        hostelId,
         attendanceDate: date,
         isPresent: isPresent !== undefined ? Boolean(isPresent) : true,
         remarks: remarks || null
@@ -73,7 +76,7 @@ export const markAttendance = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: process.env.NODE_ENV === "production" ? "Failed to mark attendance" : error.message,
       errors: null
     });
   }
@@ -84,10 +87,11 @@ export const markAttendance = async (req, res) => {
  */
 export const getMemberAttendance = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const userId = Number(req.params.id);
 
     const attendance = await prisma.attendance.findMany({
-      where: { userId },
+      where: { userId, hostelId },
       orderBy: { attendanceDate: "desc" }
     });
 
@@ -100,7 +104,7 @@ export const getMemberAttendance = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: process.env.NODE_ENV === "production" ? "Failed to fetch attendance" : error.message,
       errors: null
     });
   }
@@ -111,6 +115,7 @@ export const getMemberAttendance = async (req, res) => {
  */
 export const getAttendanceByDateRange = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const { fromDate, toDate } = req.query;
 
     if (!fromDate || !toDate) {
@@ -126,6 +131,7 @@ export const getAttendanceByDateRange = async (req, res) => {
 
     const attendance = await prisma.attendance.findMany({
       where: {
+        hostelId,
         attendanceDate: {
           gte: start,
           lte: end
@@ -152,7 +158,7 @@ export const getAttendanceByDateRange = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: process.env.NODE_ENV === "production" ? "Failed to update attendance status" : error.message,
       errors: null
     });
   }
@@ -164,6 +170,7 @@ export const getAttendanceByDateRange = async (req, res) => {
 export const getAllAttendance = async (req, res) => {
   try {
     const attendance = await prisma.attendance.findMany({
+      where: { hostelId: req.user.hostelId },
       include: {
         user: {
           select: {
@@ -186,7 +193,7 @@ export const getAllAttendance = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: process.env.NODE_ENV === "production" ? "Failed to fetch member attendance" : error.message,
       errors: null
     });
   }
@@ -197,10 +204,11 @@ export const getAllAttendance = async (req, res) => {
  */
 export const deleteAttendance = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const attendanceId = Number(req.params.id);
 
-    const attendance = await prisma.attendance.findUnique({
-      where: { id: attendanceId }
+    const attendance = await prisma.attendance.findFirst({
+      where: { id: attendanceId, hostelId }
     });
 
     if (!attendance) {
@@ -224,7 +232,7 @@ export const deleteAttendance = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: process.env.NODE_ENV === "production" ? "Failed to update meal unit exemption" : error.message,
       errors: null
     });
   }
@@ -235,6 +243,7 @@ export const deleteAttendance = async (req, res) => {
  */
 export const bulkMarkAttendance = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const { attendanceDate, memberIds, isPresent } = req.body;
 
     if (!attendanceDate || !memberIds || !Array.isArray(memberIds)) {
@@ -252,6 +261,7 @@ export const bulkMarkAttendance = async (req, res) => {
     for (const userId of memberIds) {
       const existingAttendance = await prisma.attendance.findFirst({
         where: {
+          hostelId,
           userId: Number(userId),
           attendanceDate: date
         }
@@ -270,6 +280,7 @@ export const bulkMarkAttendance = async (req, res) => {
         attendance = await prisma.attendance.create({
           data: {
             userId: Number(userId),
+            hostelId,
             attendanceDate: date,
             isPresent: isPresent !== undefined ? Boolean(isPresent) : true
           }
@@ -288,7 +299,7 @@ export const bulkMarkAttendance = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: process.env.NODE_ENV === "production" ? "Failed to fetch meal unit exemption stats" : error.message,
       errors: null
     });
   }

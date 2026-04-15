@@ -27,6 +27,27 @@ export const protect = async (req, res, next) => {
       });
     }
 
+    if (typeof decoded.tokenVersion !== "number") {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired token."
+      });
+    }
+
+    if (decoded.tokenVersion !== user.tokenVersion) {
+      return res.status(401).json({
+        success: false,
+        message: "Session expired. Please log in again."
+      });
+    }
+
+    if (!user.hostelId) {
+      return res.status(403).json({
+        success: false,
+        message: "Hostel context missing for user."
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {

@@ -17,8 +17,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final identifierController = TextEditingController();
   final passwordController = TextEditingController();
-
-  bool isAdminLogin = true;
+  bool showPassword = false;
 
   @override
   void initState() {
@@ -50,8 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = passwordController.text.trim();
 
     final success = await authProvider.login(
-      email: isAdminLogin ? identifier : null,
-      cmsId: isAdminLogin ? null : identifier,
+      identifier: identifier,
       password: password,
     );
 
@@ -77,13 +75,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _switchMode(bool adminMode) {
-    setState(() {
-      isAdminLogin = adminMode;
-      identifierController.text = '';
-      passwordController.text = '';
-    });
-  }
 
   void _showChangeCredentialsDialog(String currentPassword) {
     final newPasswordController = TextEditingController();
@@ -225,51 +216,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () => _switchMode(true),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isAdminLogin
-                                    ? Colors.blue
-                                    : Colors.grey.shade300,
-                                foregroundColor: isAdminLogin
-                                    ? Colors.white
-                                    : Colors.black,
-                              ),
-                              child: const Text('Admin'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () => _switchMode(false),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: !isAdminLogin
-                                    ? Colors.blue
-                                    : Colors.grey.shade300,
-                                foregroundColor: !isAdminLogin
-                                    ? Colors.white
-                                    : Colors.black,
-                              ),
-                              child: const Text('Member'),
-                            ),
-                          ),
-                        ],
-                      ),
-
                       const SizedBox(height: 24),
 
                       TextField(
                         controller: identifierController,
                         decoration: InputDecoration(
-                          labelText: isAdminLogin ? 'Email' : 'CMS ID',
-                          prefixIcon: Icon(
-                            isAdminLogin
-                                ? Icons.email_outlined
-                                : Icons.badge_outlined,
-                          ),
+                          labelText: 'Email or CMS ID',
+                          prefixIcon: const Icon(Icons.person_outline),
+                          hintText: 'Enter your email or CMS ID',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -278,15 +232,51 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 16),
                       TextField(
                         controller: passwordController,
-                        obscureText: true,
+                        obscureText: !showPassword,
                         decoration: InputDecoration(
                           labelText: 'Password',
                           prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              showPassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                showPassword = !showPassword;
+                              });
+                            },
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextButton(
+                              onPressed: () => context.go(AppRoutes.forgotPassword),
+                              child: const Text('Forgot Password?'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (authProvider.errorMessage != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Text(
+                            authProvider.errorMessage!,
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
@@ -314,6 +304,26 @@ class _LoginScreenState extends State<LoginScreen> {
                                   style: TextStyle(fontSize: 16),
                                 ),
                         ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "Don't have an account? ",
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                          GestureDetector(
+                            onTap: () => context.go(AppRoutes.signUp),
+                            child: const Text(
+                              'Sign Up',
+                              style: TextStyle(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

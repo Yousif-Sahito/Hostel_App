@@ -13,13 +13,14 @@ const isDateInRange = (date, fromDate, toDate) => {
   return d >= from && d <= to;
 };
 
-export const generateMonthlyBillsService = async (month, year, memberId) => {
+export const generateMonthlyBillsService = async (month, year, memberId, hostelId) => {
   // Validate month and year
   if (!month || !year || month < 1 || month > 12 || year < 2000) {
     throw new Error('Invalid month (1-12) or year (2000+)');
   }
 
   const userFilter = {
+    hostelId,
     role: "MEMBER",
     status: "ACTIVE",
     ...(memberId ? { id: memberId } : {})
@@ -34,17 +35,19 @@ export const generateMonthlyBillsService = async (month, year, memberId) => {
   }
 
   const helperCharge = await prisma.helperCharge.findFirst({
-    where: { month, year }
+    where: { month, year, hostelId }
   });
 
   const messOffPeriods = await prisma.messOffPeriod.findMany({
     where: {
+      hostelId,
       status: "ACTIVE"
     }
   });
 
   const attendanceRecords = await prisma.attendance.findMany({
     where: {
+      hostelId,
       attendanceDate: {
         gte: new Date(year, month - 1, 1),
         lt: new Date(year, month, 1)
@@ -54,6 +57,7 @@ export const generateMonthlyBillsService = async (month, year, memberId) => {
 
   const mealEntries = await prisma.mealEntry.findMany({
     where: {
+      hostelId,
       mealDate: {
         gte: new Date(year, month - 1, 1),
         lt: new Date(year, month, 1)
@@ -77,6 +81,8 @@ export const generateMonthlyBillsService = async (month, year, memberId) => {
   for (const meal of mealEntries) {
     const member = memberUnitMap[meal.userId];
     if (!member) continue;
+    const currentMember = members.find((m) => m.id === meal.userId);
+    if (!currentMember || currentMember.mealUnitEnabled === false) continue;
 
     const isMessOff = messOffPeriods.some(
       (period) =>
@@ -84,15 +90,16 @@ export const generateMonthlyBillsService = async (month, year, memberId) => {
         isDateInRange(meal.mealDate, period.fromDate, period.toDate)
     );
 
-    // If member is marked as in attendance, units are disabled (don't count)
-    const isInAttendance = attendanceRecords.some(
+    // Only disable units when an attendance record explicitly marks the member as absent.
+    // Present attendance should not prevent meal units from being counted.
+    const isAbsentAttendance = attendanceRecords.some(
       (record) =>
         record.userId === meal.userId &&
         record.attendanceDate.toDateString() === meal.mealDate.toDateString() &&
-        record.isPresent === true
+        record.isPresent === false
     );
 
-    if (isMessOff || isInAttendance) continue;
+    if (isMessOff || isAbsentAttendance) continue;
 
     if (meal.breakfastTaken) {
       member.breakfastUnits += UNIT_VALUES.breakfast;
@@ -117,7 +124,7 @@ export const generateMonthlyBillsService = async (month, year, memberId) => {
     }
   }
 
-  const settings = await prisma.hostelSetting.findFirst();
+  const settings = await prisma.hostelSetting.findFirst({ where: { hostelId } });
 
   if (!settings) {
     throw new Error("Hostel settings not found");
@@ -127,7 +134,7 @@ export const generateMonthlyBillsService = async (month, year, memberId) => {
   const lunchRate = settings.lunchPrice || settings.mealRate || 0;
   const dinnerRate = settings.dinnerPrice || settings.mealRate || 0;
   const guestMealRate = settings.guestMealPrice || settings.mealRate || 0;
-  const helperPerMember = settings.helperCharge || 0;
+  const helperPerMember = helperCharge?.perMemberAmount || 0;
 
   let totalMealExpense = 0;
 
@@ -141,13 +148,13 @@ export const generateMonthlyBillsService = async (month, year, memberId) => {
     const guestAmount = unitData.guestUnits * guestMealRate;
     const baseAmount = breakfastAmount + lunchAmount + dinnerAmount + guestAmount;
     const totalAmount = baseAmount + helperPerMember;
-    const dueAmount = totalAmount;
 
     totalMealExpense += baseAmount;
 
     const existingBill = await prisma.bill.findUnique({
       where: {
-        userId_month_year: {
+        hostelId_userId_month_year: {
+          hostelId,
           userId: member.id,
           month,
           year
@@ -158,11 +165,16 @@ export const generateMonthlyBillsService = async (month, year, memberId) => {
     const existingPaidAmount = existingBill ? existingBill.paidAmount : 0;
     const existingExtraCharges = existingBill ? existingBill.extraCharges : 0;
     const finalTotal = totalAmount + existingExtraCharges;
-    const finalDue = finalTotal - existingPaidAmount;
+    const currentDueBeforeAdvance = Math.max(finalTotal - existingPaidAmount, 0);
+    const mealDeductionFromAdvance = Math.min(member.advanceBalance || 0, currentDueBeforeAdvance);
+    const remainingAdvanceBalance = (member.advanceBalance || 0) - mealDeductionFromAdvance;
+    const finalPaidAmount = existingPaidAmount + mealDeductionFromAdvance;
+    const finalDue = finalTotal - finalPaidAmount;
 
     const bill = await prisma.bill.upsert({
       where: {
-        userId_month_year: {
+        hostelId_userId_month_year: {
+          hostelId,
           userId: member.id,
           month,
           year
@@ -175,14 +187,16 @@ export const generateMonthlyBillsService = async (month, year, memberId) => {
         guestUnits: unitData.guestUnits,
         helperCharge: helperPerMember,
         totalAmount: finalTotal,
+        paidAmount: finalPaidAmount,
         dueAmount: finalDue,
         paymentStatus:
-          existingPaidAmount <= 0
+          finalPaidAmount <= 0
             ? (finalDue <= 0 ? "PAID" : "UNPAID")
             : (finalDue <= 0 ? "PAID" : "PARTIAL")
       },
       create: {
         userId: member.id,
+        hostelId,
         month,
         year,
         breakfastUnits: unitData.breakfastUnits,
@@ -192,11 +206,18 @@ export const generateMonthlyBillsService = async (month, year, memberId) => {
         helperCharge: helperPerMember,
         extraCharges: 0,
         totalAmount,
-        paidAmount: 0,
-        dueAmount,
-        paymentStatus: dueAmount <= 0 ? "PAID" : "UNPAID"
+        paidAmount: mealDeductionFromAdvance,
+        dueAmount: totalAmount - mealDeductionFromAdvance,
+        paymentStatus: (totalAmount - mealDeductionFromAdvance) <= 0 ? "PAID" : "UNPAID"
       }
     });
+
+    if (mealDeductionFromAdvance > 0) {
+      await prisma.user.update({
+        where: { id: member.id },
+        data: { advanceBalance: remainingAdvanceBalance }
+      });
+    }
 
     generatedBills.push(bill);
   }

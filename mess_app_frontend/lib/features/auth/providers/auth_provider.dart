@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../core/storage/secure_storage_service.dart';
 import '../services/auth_service.dart';
@@ -17,8 +17,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isMember => currentUser?.role.toUpperCase() == 'MEMBER';
 
   Future<bool> login({
-    String? email,
-    String? cmsId,
+    required String identifier,
     required String password,
   }) async {
     try {
@@ -26,14 +25,18 @@ class AuthProvider extends ChangeNotifier {
       errorMessage = null;
       notifyListeners();
 
+      final isEmail = identifier.contains('@');
       final result = await AuthService.login(
-        LoginRequestModel(email: email, cmsId: cmsId, password: password),
+        LoginRequestModel(
+          email: isEmail ? identifier : null,
+          cmsId: isEmail ? null : identifier,
+          password: password,
+        ),
       );
 
       token = result['token'] as String;
       currentUser = result['user'] as UserModel;
 
-      // Send FCM token to backend after successful login
       try {
         final fcmToken = await FCMService().getToken();
         if (fcmToken != null) {
@@ -41,8 +44,160 @@ class AuthProvider extends ChangeNotifier {
         }
       } catch (e) {
         debugPrint('Error updating FCM token: $e');
-        // Don't fail login if FCM token update fails
       }
+
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      isLoading = false;
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> register({
+    required String fullName,
+    required String email,
+    String? phone,
+    required String password,
+    required String role,
+    required String hostelName,
+  }) async {
+    try {
+      isLoading = true;
+      errorMessage = null;
+      notifyListeners();
+
+      final result = await AuthService.register(
+        fullName: fullName,
+        email: email,
+        phone: phone,
+        password: password,
+        role: role,
+        hostelName: hostelName,
+      );
+
+      token = result['token'] as String;
+      currentUser = result['user'] as UserModel;
+
+      try {
+        final fcmToken = await FCMService().getToken();
+        if (fcmToken != null) {
+          await AuthService.updateFCMToken(fcmToken);
+        }
+      } catch (e) {
+        debugPrint('Error updating FCM token: $e');
+      }
+
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      isLoading = false;
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> forgotPassword(String email) async {
+    try {
+      isLoading = true;
+      errorMessage = null;
+      notifyListeners();
+
+      await AuthService.forgotPassword(email);
+
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      isLoading = false;
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> resetPassword({
+    required String token,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      if (newPassword != confirmPassword) {
+        throw Exception('Passwords do not match');
+      }
+
+      isLoading = true;
+      errorMessage = null;
+      notifyListeners();
+
+      await AuthService.resetPassword(
+        token: token,
+        newPassword: newPassword,
+      );
+
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      isLoading = false;
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> verifyEmail(String token) async {
+    try {
+      isLoading = true;
+      errorMessage = null;
+      notifyListeners();
+
+      await AuthService.verifyEmail(token);
+
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      isLoading = false;
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> resendVerificationEmail(String email) async {
+    try {
+      isLoading = true;
+      errorMessage = null;
+      notifyListeners();
+
+      await AuthService.resendVerificationEmail(email);
+
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      isLoading = false;
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteAccount() async {
+    try {
+      isLoading = true;
+      errorMessage = null;
+      notifyListeners();
+
+      await AuthService.deleteAccount();
+      token = null;
+      currentUser = null;
 
       isLoading = false;
       notifyListeners();

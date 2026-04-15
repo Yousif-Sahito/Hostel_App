@@ -17,7 +17,14 @@ export const env = {
   ADMIN_EMAIL: process.env.ADMIN_EMAIL || "admin@hostel.com",
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
   DATABASE_URL: process.env.DATABASE_URL,
-  FIREBASE_SERVICE_ACCOUNT_KEY: process.env.FIREBASE_SERVICE_ACCOUNT_KEY
+  FIREBASE_SERVICE_ACCOUNT_KEY: process.env.FIREBASE_SERVICE_ACCOUNT_KEY,
+  FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:56725/#",
+  SMTP_HOST: process.env.SMTP_HOST,
+  SMTP_PORT: process.env.SMTP_PORT,
+  SMTP_USER: process.env.SMTP_USER,
+  SMTP_PASS: process.env.SMTP_PASS,
+  SMTP_FROM: process.env.SMTP_FROM,
+  CORS_ORIGIN: process.env.CORS_ORIGIN
 };
 
 // Warn about insecure defaults in development

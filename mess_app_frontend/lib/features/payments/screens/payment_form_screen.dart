@@ -21,7 +21,7 @@ class _PaymentFormScreenState extends State<PaymentFormScreen> {
   late final TextEditingController notesController;
 
   String paymentMethod = 'CASH';
-  String paymentPurpose = 'ADVANCE';
+  String paymentPurpose = 'REGULAR';
   bool isLoading = false;
 
   @override
@@ -55,12 +55,13 @@ class _PaymentFormScreenState extends State<PaymentFormScreen> {
     setState(() => isLoading = true);
 
     try {
-      await PaymentService.addPayment(
+      final paymentResponse = await PaymentService.addPayment(
         billId: widget.bill.id!,
         userId: widget.bill.userId,
         amount: double.parse(amountController.text.trim()),
         paymentMethod: paymentMethod,
         paymentDate: paymentDateController.text.trim(),
+        paymentType: paymentPurpose,
         referenceNo: referenceNoController.text.trim().isEmpty
             ? null
             : referenceNoController.text.trim(),
@@ -72,8 +73,18 @@ class _PaymentFormScreenState extends State<PaymentFormScreen> {
 
       if (!mounted) return;
 
+      final remainingAdvanceBalance =
+          (paymentResponse['remainingAdvanceBalance'] ?? 0).toDouble();
+      final advancedAmount =
+          (paymentResponse['advancedAmount'] ?? 0).toDouble();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payment added successfully')),
+        SnackBar(
+          content: Text(
+            advancedAmount > 0
+                ? 'Payment added. Rs. ${advancedAmount.toStringAsFixed(0)} moved to advance. Balance: Rs. ${remainingAdvanceBalance.toStringAsFixed(0)}'
+                : 'Payment added successfully',
+          ),
+        ),
       );
 
       Navigator.pop(context, true);
@@ -175,12 +186,12 @@ class _PaymentFormScreenState extends State<PaymentFormScreen> {
                     ),
                     items: const [
                       DropdownMenuItem(
-                        value: 'ADVANCE',
-                        child: Text('Advance Payment'),
-                      ),
-                      DropdownMenuItem(
                         value: 'REGULAR',
                         child: Text('Regular Payment'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'ADVANCE',
+                        child: Text('Advance Payment'),
                       ),
                     ],
                     onChanged: (value) {

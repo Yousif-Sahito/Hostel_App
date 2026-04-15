@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/bill_model.dart';
 import '../services/bill_service.dart';
 import '../../payments/screens/payment_form_screen.dart';
+import '../../settings/providers/settings_provider.dart';
 
 class MemberBillScreen extends StatefulWidget {
   final BillModel bill;
@@ -37,6 +39,13 @@ class _MemberBillScreenState extends State<MemberBillScreen> {
     );
 
     paymentStatus = widget.bill.paymentStatus;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final settingsProvider = context.read<SettingsProvider>();
+      if (settingsProvider.settings == null && !settingsProvider.isLoading) {
+        settingsProvider.fetchSettings();
+      }
+    });
   }
 
   @override
@@ -98,6 +107,12 @@ class _MemberBillScreenState extends State<MemberBillScreen> {
   @override
   Widget build(BuildContext context) {
     final bill = widget.bill;
+    final settings = context.watch<SettingsProvider>().settings;
+    final breakfastPrice = settings?.breakfastPrice ?? 0;
+    final lunchPrice = settings?.lunchPrice ?? 0;
+    final dinnerPrice = settings?.dinnerPrice ?? 0;
+    final guestMealPrice = settings?.guestMealPrice ?? 0;
+    final helperCharge = settings?.helperCharge ?? widget.bill.helperCharge;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Bill Detail')),
@@ -112,21 +127,32 @@ class _MemberBillScreenState extends State<MemberBillScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _item('Member', bill.userName ?? 'Member #${bill.userId}'),
-                _item('Month/Year', '${bill.month}/${bill.year}'),
-                _item('Breakfast Units', bill.breakfastUnits.toString()),
-                _item('Lunch Units', bill.lunchUnits.toString()),
-                _item('Dinner Units', bill.dinnerUnits.toString()),
-                _item('Guest Units', bill.guestUnits.toString()),
+                if (settings != null) ...[
+                  _item('Breakfast Price', 'Rs. ${breakfastPrice.toStringAsFixed(0)}'),
+                  _item('Lunch Price', 'Rs. ${lunchPrice.toStringAsFixed(0)}'),
+                  _item('Dinner Price', 'Rs. ${dinnerPrice.toStringAsFixed(0)}'),
+                  _item('Guest Price', 'Rs. ${guestMealPrice.toStringAsFixed(0)}'),
+                ],
                 _item(
                   'Helper Charge',
-                  'Rs. ${bill.helperCharge.toStringAsFixed(0)}',
+                  'Rs. ${(settings?.helperCharge ?? bill.helperCharge).toStringAsFixed(0)}',
                 ),
+
+                const SizedBox(height: 16),
+
+                // ✅ Display Total Bill
                 _item(
-                  'Total Amount',
+                  'Total Bill',
                   'Rs. ${bill.totalAmount.toStringAsFixed(0)}',
                 ),
-                _item('Due Amount', 'Rs. ${bill.dueAmount.toStringAsFixed(0)}'),
+
+                const SizedBox(height: 4),
+
+                // ✅ Display Remaining Bill
+                _item(
+                  'Remaining Bill',
+                  'Rs. ${bill.dueAmount.toStringAsFixed(0)}',
+                ),
 
                 const SizedBox(height: 10),
 

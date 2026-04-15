@@ -1,21 +1,30 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'firebase_options.dart';
 import 'app/routes/app_router.dart';
 import 'app/theme/app_theme.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/settings/providers/settings_provider.dart';
 import 'features/dashboard/providers/dashboard_provider.dart';
+import 'features/notifications/providers/notification_provider.dart';
 import 'services/fcm_service.dart';
-import 'services/auth_service.dart';
+import 'features/auth/services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase first
   try {
-    await Firebase.initializeApp();
+    if (kIsWeb) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } else {
+      await Firebase.initializeApp();
+    }
     debugPrint('✅ Firebase initialized successfully');
   } catch (e, stackTrace) {
     debugPrint('❌ Firebase initialization failed: $e');
@@ -81,6 +90,9 @@ class _MessAppState extends State<MessApp> {
         ),
         ChangeNotifierProvider<DashboardProvider>(
           create: (_) => DashboardProvider(),
+        ),
+        ChangeNotifierProvider<NotificationProvider>(
+          create: (_) => NotificationProvider(),
         ),
       ],
       child: MaterialApp.router(

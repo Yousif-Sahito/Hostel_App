@@ -1,6 +1,10 @@
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/forgot_password_screen.dart';
+import '../../features/auth/screens/reset_password_screen.dart';
+import '../../features/auth/screens/verify_email_screen.dart';
+import '../../features/auth/screens/signup_screen.dart';
 import '../../features/dashboard/screens/admin_dashboard_screen.dart';
 import '../../features/dashboard/screens/member_dashboard_screen.dart';
 import '../../features/members/screens/members_list_screen.dart';
@@ -17,6 +21,7 @@ import '../../features/settings/screens/settings_screen.dart';
 import '../../features/payments/screens/payment_history_screen.dart';
 import '../../features/mess_off/screens/mess_off_list_screen.dart';
 import '../../features/mess_off/screens/member_mess_off_screen.dart';
+import '../../features/notifications/screens/notifications_screen.dart';
 
 import 'app_routes.dart';
 
@@ -32,6 +37,26 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.resetPassword,
+        builder: (context, state) => ResetPasswordScreen(
+          tokenFromLink: state.uri.queryParameters['token'],
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.verifyEmail,
+        builder: (context, state) => VerifyEmailScreen(
+          tokenFromLink: state.uri.queryParameters['token'],
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.signUp,
+        builder: (context, state) => const SignUpScreen(),
       ),
       // Admin Routes
       GoRoute(
@@ -82,6 +107,10 @@ class AppRouter {
             path: 'settings',
             builder: (context, state) => const SettingsScreen(),
           ),
+          GoRoute(
+            path: 'notifications',
+            builder: (context, state) => const NotificationsScreen(),
+          ),
         ],
       ),
       // Member Routes
@@ -112,6 +141,10 @@ class AppRouter {
           GoRoute(
             path: 'settings',
             builder: (context, state) => const SettingsScreen(),
+          ),
+          GoRoute(
+            path: 'notifications',
+            builder: (context, state) => const NotificationsScreen(),
           ),
         ],
       ),
@@ -171,6 +204,10 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.settings,
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.notifications,
+        builder: (context, state) => const NotificationsScreen(),
       ),
     ],
   );

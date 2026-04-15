@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../rooms/models/room_model.dart';
 import '../../rooms/services/room_service.dart';
@@ -24,7 +25,6 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   late final TextEditingController passwordController;
   late final TextEditingController joiningDateController;
 
-  String role = 'MEMBER';
   String status = 'ACTIVE';
   bool isLoading = false;
   bool isRoomsLoading = true;
@@ -33,6 +33,10 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   int? selectedRoomId;
 
   bool get isEdit => widget.member != null;
+  bool _isRoomSelectable(RoomModel room) {
+    final isCurrentRoom = widget.member?.roomId == room.id;
+    return room.occupiedCount < room.capacity || isCurrentRoom;
+  }
 
   @override
   void initState() {
@@ -46,10 +50,9 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     phoneController = TextEditingController(text: widget.member?.phone ?? '');
     passwordController = TextEditingController();
     joiningDateController = TextEditingController(
-      text: widget.member?.joiningDate ?? '',
+      text: _normalizeJoiningDateForInput(widget.member?.joiningDate),
     );
 
-    role = widget.member?.role ?? 'MEMBER';
     status = widget.member?.status ?? 'ACTIVE';
     selectedRoomId = widget.member?.roomId;
 
@@ -97,6 +100,16 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
       final joiningDate = joiningDateController.text.trim().isEmpty
           ? null
           : joiningDateController.text.trim();
+      final selectedRoom = selectedRoomId == null
+          ? null
+          : rooms.cast<RoomModel?>().firstWhere(
+              (room) => room?.id == selectedRoomId,
+              orElse: () => null,
+            );
+
+      if (selectedRoom != null && !_isRoomSelectable(selectedRoom)) {
+        throw Exception('Room ${selectedRoom.roomNumber} is full');
+      }
 
       if (isEdit) {
         await MemberService.updateMember(
@@ -105,7 +118,6 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
           email: emailController.text.trim(),
           cmsId: cmsIdController.text.trim(),
           phone: phoneController.text.trim(),
-          role: role,
           status: status,
           roomId: selectedRoomId,
           joiningDate: joiningDate,
@@ -117,7 +129,6 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
           cmsId: cmsIdController.text.trim(),
           phone: phoneController.text.trim(),
           password: passwordController.text.trim(),
-          role: role,
           status: status,
           roomId: selectedRoomId,
           joiningDate: joiningDate,
@@ -148,6 +159,20 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
         setState(() => isLoading = false);
       }
     }
+  }
+
+  String _normalizeJoiningDateForInput(String? rawDate) {
+    if (rawDate == null || rawDate.trim().isEmpty) return '';
+    final value = rawDate.trim();
+    final maskedPattern = RegExp(r'^\d{2}/\d{2}/\d{2}$');
+    if (maskedPattern.hasMatch(value)) return value;
+
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) return '';
+    final yy = (parsed.year % 100).toString().padLeft(2, '0');
+    final mm = parsed.month.toString().padLeft(2, '0');
+    final dd = parsed.day.toString().padLeft(2, '0');
+    return '$dd/$mm/$yy';
   }
 
   Widget _textField(
@@ -196,7 +221,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
               child: Column(
                 children: [
                   _textField('Full Name', fullNameController),
-                  _textField('Email', emailController, requiredField: false),
+                  _textField('Email', emailController),
                   _textField('CMS ID', cmsIdController),
                   _textField('Phone', phoneController),
                   if (!isEdit)
@@ -223,12 +248,24 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
                                 child: Text('No Room'),
                               ),
                               ...rooms.map(
-                                (room) => DropdownMenuItem<int?>(
-                                  value: room.id,
-                                  child: Text(
-                                    'Room ${room.roomNumber} (${room.occupiedCount}/${room.capacity})',
-                                  ),
-                                ),
+                                (room) {
+                                  final isCurrentRoom = widget.member?.roomId == room.id;
+                                  final isFull = room.occupiedCount >= room.capacity;
+                                  final isSelectable = _isRoomSelectable(room);
+                                  final suffix = isCurrentRoom
+                                      ? ' - Current'
+                                      : isFull
+                                      ? ' - Full'
+                                      : '';
+
+                                  return DropdownMenuItem<int?>(
+                                    value: room.id,
+                                    enabled: isSelectable,
+                                    child: Text(
+                                      'Room ${room.roomNumber} (${room.occupiedCount}/${room.capacity})$suffix',
+                                    ),
+                                  );
+                                },
                               ),
                             ],
                             onChanged: (value) {
@@ -236,31 +273,32 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
                             },
                           ),
                   ),
-                  _textField(
-                    'Joining Date',
-                    joiningDateController,
-                    requiredField: false,
-                    hintText: 'yyyy-mm-dd',
-                  ),
-                  DropdownButtonFormField<String>(
-                    initialValue: role,
-                    decoration: InputDecoration(
-                      labelText: 'Role',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: TextFormField(
+                      controller: joiningDateController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        JoiningDateInputFormatter(),
+                      ],
+                      validator: (value) {
+                        final raw = value?.trim() ?? '';
+                        if (raw.isEmpty) return null;
+                        if (!RegExp(r'^\d{2}/\d{2}/\d{2}$').hasMatch(raw)) {
+                          return 'Use DD/MM/YY format';
+                        }
+                        return null;
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'Joining Date',
+                        hintText: 'DD/MM/YY',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'MEMBER', child: Text('MEMBER')),
-                      DropdownMenuItem(value: 'ADMIN', child: Text('ADMIN')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => role = value);
-                      }
-                    },
                   ),
-                  const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
                     initialValue: status,
                     decoration: InputDecoration(
@@ -299,6 +337,31 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class JoiningDateInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final clamped = digits.length > 6 ? digits.substring(0, 6) : digits;
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < clamped.length; i++) {
+      buffer.write(clamped[i]);
+      if ((i == 1 || i == 3) && i != clamped.length - 1) {
+        buffer.write('/');
+      }
+    }
+
+    final text = buffer.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
     );
   }
 }

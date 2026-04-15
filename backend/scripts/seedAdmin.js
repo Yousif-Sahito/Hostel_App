@@ -4,9 +4,24 @@ import { env } from "../src/config/environment.js";
 
 const seedAdmin = async () => {
   try {
+    const defaultHostelName = process.env.DEFAULT_HOSTEL_NAME || "Default Hostel";
+    const normalizedName = defaultHostelName.trim().toLowerCase().replace(/\s+/g, " ");
+    let hostel = await prisma.hostel.findUnique({
+      where: { normalizedName }
+    });
+    if (!hostel) {
+      hostel = await prisma.hostel.create({
+        data: {
+          name: defaultHostelName,
+          normalizedName
+        }
+      });
+    }
+
     const existingAdmin = await prisma.user.findFirst({
       where: {
-        role: "ADMIN"
+        role: "ADMIN",
+        hostelId: hostel.id
       }
     });
 
@@ -23,7 +38,8 @@ const seedAdmin = async () => {
         email: env.ADMIN_EMAIL,
         passwordHash: hashedPassword,
         role: "ADMIN",
-        status: "ACTIVE"
+        status: "ACTIVE",
+        hostelId: hostel.id
       }
     });
 

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/widgets/app_drawer.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/settings_model.dart';
 import '../providers/settings_provider.dart';
+import '../../../app/routes/app_routes.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -97,6 +99,108 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _deleteAccount(AuthProvider authProvider) async {
+    final first = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This will permanently delete your hostel and ALL records (members, rooms, meals, bills, payments, etc.).',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+    if (first != true) return;
+
+    final confirmController = TextEditingController();
+    final second = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          final canDelete =
+              confirmController.text.trim().toUpperCase() == 'DELETE';
+
+          return AlertDialog(
+            title: const Text('Final confirmation'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Type DELETE to confirm.'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: confirmController,
+                  autofocus: true,
+                  textInputAction: TextInputAction.done,
+                  decoration: const InputDecoration(
+                    hintText: 'DELETE',
+                  ),
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) {
+                    if (confirmController.text.trim().toUpperCase() == 'DELETE') {
+                      Navigator.pop(context, true);
+                    }
+                  },
+                ),
+              ],
+            ),
+            contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+            actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: canDelete ? () => Navigator.pop(context, true) : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Delete permanently'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    confirmController.dispose();
+
+    if (second != true) return;
+
+    try {
+      final success = await authProvider.deleteAccount();
+      
+      if (!mounted) return;
+      
+      if (success) {
+        context.go(AppRoutes.login);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(authProvider.errorMessage ?? 'Failed to delete account'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
   String? _requiredValidator(String? value, String field) {
@@ -427,6 +531,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             borderRadius: BorderRadius.circular(
                                               12,
                                             ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 52,
+                                      child: OutlinedButton.icon(
+                                        onPressed: settingsProvider.isSaving
+                                            ? null
+                                            : () => _deleteAccount(authProvider),
+                                        icon: const Icon(Icons.delete_forever),
+                                        label: const Text('Delete Account'),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: Colors.red,
+                                          side: const BorderSide(color: Colors.red),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
                                           ),
                                         ),
                                       ),

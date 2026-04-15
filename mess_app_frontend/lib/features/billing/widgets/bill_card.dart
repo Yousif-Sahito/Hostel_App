@@ -41,6 +41,9 @@ class BillCard extends StatelessWidget {
             Text('Total: Rs. ${bill.totalAmount.toStringAsFixed(0)}'),
             Text('Paid: Rs. ${bill.paidAmount.toStringAsFixed(0)}'),
             Text('Due: Rs. ${bill.dueAmount.toStringAsFixed(0)}'),
+            Text(
+              'Remaining Advance: Rs. ${bill.userAdvanceBalance.toStringAsFixed(0)}',
+            ),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

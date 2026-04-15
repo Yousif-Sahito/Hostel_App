@@ -14,6 +14,7 @@ const getCurrentMonthYear = () => {
 
 export const getAdminDashboardStats = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const { month, year } = getCurrentMonthYear();
     const todayDay = getTodayDayName();
 
@@ -29,6 +30,7 @@ export const getAdminDashboardStats = async (req, res) => {
     // Get members that are on mess off today
     const membersOnMessOffToday = await prisma.messOffPeriod.findMany({
       where: {
+        hostelId,
         status: "ACTIVE",
         fromDate: { lte: todayEnd },
         toDate: { gte: todayStart }
@@ -48,10 +50,11 @@ export const getAdminDashboardStats = async (req, res) => {
       tomorrowMessOffCount
     ] = await Promise.all([
       prisma.user.count({
-        where: { role: "MEMBER" },
+        where: { role: "MEMBER", hostelId },
       }),
       prisma.user.count({
         where: { 
+          hostelId,
           role: "MEMBER", 
           status: "ACTIVE",
           ...(messOffUserIds.length > 0 && { id: { notIn: messOffUserIds } })
@@ -59,24 +62,28 @@ export const getAdminDashboardStats = async (req, res) => {
       }),
       prisma.bill.count({
         where: {
+          hostelId,
           paymentStatus: {
             in: ["UNPAID", "PARTIAL"],
           },
         },
       }),
       prisma.bill.findMany({
-        where: { month, year },
+        where: { month, year, hostelId },
         select: { paidAmount: true },
       }),
       prisma.hostelSetting.findFirst({
+        where: { hostelId },
         orderBy: { id: "desc" },
       }),
       prisma.weeklyMenu.findFirst({
+        where: { hostelId },
         orderBy: { weekStartDate: "desc" },
         include: { items: true },
       }),
       prisma.messOffPeriod.count({
         where: {
+          hostelId,
           status: "ACTIVE",
           fromDate: { lte: tomorrowEnd },
           toDate: { gte: tomorrowStart }
@@ -113,7 +120,7 @@ export const getAdminDashboardStats = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: process.env.NODE_ENV === "production" ? "Failed to fetch dashboard data" : error.message,
     });
   }
 };
@@ -121,6 +128,7 @@ export const getAdminDashboardStats = async (req, res) => {
 export const getMemberDashboardStats = async (req, res) => {
   try {
     const userId = req.user.id;
+    const hostelId = req.user.hostelId;
     const { month, year } = getCurrentMonthYear();
     const todayDay = getTodayDayName();
 
@@ -131,15 +139,18 @@ export const getMemberDashboardStats = async (req, res) => {
     const [settings, weeklyMenu, monthlyMealEntries, currentBill, activeMessOff, tomorrowMessOff] =
       await Promise.all([
         prisma.hostelSetting.findFirst({
+          where: { hostelId },
           orderBy: { id: "desc" },
         }),
         prisma.weeklyMenu.findFirst({
+          where: { hostelId },
           orderBy: { weekStartDate: "desc" },
           include: { items: true },
         }),
         prisma.mealEntry.findMany({
           where: {
             userId,
+            hostelId,
             mealDate: {
               gte: new Date(year, month - 1, 1),
               lt: new Date(year, month, 1),
@@ -154,7 +165,8 @@ export const getMemberDashboardStats = async (req, res) => {
         }),
         prisma.bill.findUnique({
           where: {
-            userId_month_year: {
+            hostelId_userId_month_year: {
+              hostelId,
               userId,
               month,
               year,
@@ -164,6 +176,7 @@ export const getMemberDashboardStats = async (req, res) => {
         prisma.messOffPeriod.findFirst({
           where: {
             userId,
+            hostelId,
             status: "ACTIVE",
             fromDate: { lte: new Date() },
             toDate: { gte: new Date() }
@@ -172,6 +185,7 @@ export const getMemberDashboardStats = async (req, res) => {
         prisma.messOffPeriod.findFirst({
           where: {
             userId,
+            hostelId,
             status: "ACTIVE",
             fromDate: { lte: tomorrow },
             toDate: { gte: tomorrow }
@@ -216,7 +230,7 @@ export const getMemberDashboardStats = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: process.env.NODE_ENV === "production" ? "Failed to fetch dashboard analytics" : error.message,
     });
   }
 };

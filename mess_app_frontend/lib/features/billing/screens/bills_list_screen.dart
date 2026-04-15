@@ -89,8 +89,9 @@ class _BillsListView extends StatelessWidget {
   }
 
   Future<void> _showGenerateDialog(BuildContext context) async {
-    final monthController = TextEditingController();
-    final yearController = TextEditingController();
+    final now = DateTime.now();
+    final monthController = TextEditingController(text: now.month.toString());
+    final yearController = TextEditingController(text: now.year.toString());
     final memberIdController = TextEditingController();
 
     final result = await showDialog<bool>(

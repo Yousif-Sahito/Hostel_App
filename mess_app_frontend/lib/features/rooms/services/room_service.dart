@@ -58,8 +58,7 @@ class RoomService {
   static Future<void> addRoom({
     required String roomNumber,
     required int capacity,
-    int occupiedCount = 0,
-    String status = 'ACTIVE',
+    String status = 'AVAILABLE',
   }) async {
     try {
       await DioClient.dio.post(
@@ -67,7 +66,6 @@ class RoomService {
         data: {
           'roomNumber': roomNumber,
           'capacity': capacity,
-          'occupiedCount': occupiedCount,
           'status': status,
         },
         options: await _authOptions(),

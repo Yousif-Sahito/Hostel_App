@@ -17,7 +17,7 @@ class RoomCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isAvailable = room.status.toUpperCase() == 'AVAILABLE';
-    final availableBeds = room.capacity - room.occupiedCount;
+    final availableBeds = (room.capacity - room.occupiedCount).clamp(0, room.capacity);
 
     return Card(
       elevation: 3,

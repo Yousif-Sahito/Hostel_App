@@ -63,6 +63,7 @@ class MemberService {
     required String password,
     String role = 'MEMBER',
     String status = 'ACTIVE',
+    bool mealUnitEnabled = true,
     int? roomId,
     String? joiningDate,
   }) async {
@@ -77,6 +78,7 @@ class MemberService {
           'password': password,
           'role': role,
           'status': status,
+          'mealUnitEnabled': mealUnitEnabled,
           'roomId': roomId,
           'joiningDate': joiningDate,
         },
@@ -95,6 +97,7 @@ class MemberService {
     required String phone,
     String role = 'MEMBER',
     String status = 'ACTIVE',
+    bool? mealUnitEnabled,
     int? roomId,
     String? joiningDate,
   }) async {
@@ -108,6 +111,7 @@ class MemberService {
           'phone': phone,
           'role': role,
           'status': status,
+          'mealUnitEnabled': mealUnitEnabled,
           'roomId': roomId,
           'joiningDate': joiningDate,
         },

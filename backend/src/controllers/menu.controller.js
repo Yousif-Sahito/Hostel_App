@@ -2,10 +2,12 @@ import { prisma } from "../config/prisma.js";
 
 export const getCurrentWeekMenu = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const today = new Date();
 
     const menu = await prisma.weeklyMenu.findFirst({
       where: {
+        hostelId,
         weekStartDate: {
           lte: today
         }
@@ -26,13 +28,14 @@ export const getCurrentWeekMenu = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to fetch weekly menu" : error.message
     });
   }
 };
 
 export const createMenu = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const { weekStartDate, items } = req.body;
 
     if (!weekStartDate || !items || !Array.isArray(items) || items.length === 0) {
@@ -51,6 +54,7 @@ export const createMenu = async (req, res) => {
 
     const menu = await prisma.weeklyMenu.create({
       data: {
+        hostelId,
         weekStartDate: new Date(weekStartDate),
         createdBy: req.user.id,
         items: {
@@ -70,13 +74,14 @@ export const createMenu = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: process.env.NODE_ENV === "production" ? "Failed to create menu" : error.message,
     });
   }
 };
 
 export const updateMenu = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const id = Number(req.params.id);
     const { items } = req.body;
 
@@ -94,8 +99,20 @@ export const updateMenu = async (req, res) => {
       dinner: item.dinner,
     }));
 
+    const existingMenu = await prisma.weeklyMenu.findFirst({
+      where: { id, hostelId },
+      select: { id: true }
+    });
+
+    if (!existingMenu) {
+      return res.status(404).json({
+        success: false,
+        message: "Menu not found"
+      });
+    }
+
     await prisma.weeklyMenuItem.deleteMany({
-      where: { weeklyMenuId: id }
+      where: { weeklyMenuId: id, weeklyMenu: { hostelId } }
     });
 
     const menu = await prisma.weeklyMenu.update({
@@ -116,7 +133,7 @@ export const updateMenu = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to update menu" : error.message
     });
   }
 };

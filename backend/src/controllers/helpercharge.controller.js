@@ -2,7 +2,9 @@ import { prisma } from "../config/prisma.js";
 
 export const getHelperCharges = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const data = await prisma.helperCharge.findMany({
+      where: { hostelId },
       include: {
         creator: true
       },
@@ -19,13 +21,14 @@ export const getHelperCharges = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to fetch helper charges" : error.message
     });
   }
 };
 
 export const createHelperCharge = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const { month, year, totalAmount, notes } = req.body;
 
     if (!month || !year || !totalAmount) {
@@ -37,6 +40,7 @@ export const createHelperCharge = async (req, res) => {
 
     const activeMembersCount = await prisma.user.count({
       where: {
+        hostelId,
         role: "MEMBER",
         status: "ACTIVE"
       }
@@ -49,6 +53,7 @@ export const createHelperCharge = async (req, res) => {
       data: {
         month: Number(month),
         year: Number(year),
+        hostelId,
         totalAmount: Number(totalAmount),
         perMemberAmount,
         notes: notes || null,
@@ -64,18 +69,19 @@ export const createHelperCharge = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to create helper charge" : error.message
     });
   }
 };
 
 export const updateHelperCharge = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const id = Number(req.params.id);
     const { totalAmount, notes } = req.body;
 
-    const existing = await prisma.helperCharge.findUnique({
-      where: { id }
+    const existing = await prisma.helperCharge.findFirst({
+      where: { id, hostelId }
     });
 
     if (!existing) {
@@ -87,6 +93,7 @@ export const updateHelperCharge = async (req, res) => {
 
     const activeMembersCount = await prisma.user.count({
       where: {
+        hostelId,
         role: "MEMBER",
         status: "ACTIVE"
       }
@@ -113,7 +120,7 @@ export const updateHelperCharge = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to update helper charge" : error.message
     });
   }
 };

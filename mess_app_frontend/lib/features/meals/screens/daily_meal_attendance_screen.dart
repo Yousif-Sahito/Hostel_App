@@ -64,14 +64,17 @@ class _DailyMealAttendanceScreenState extends State<DailyMealAttendanceScreen> {
         final matchingMeals = mealsOnDate.where((m) => m.userId == member.id);
         final existingMeal = matchingMeals.isNotEmpty ? matchingMeals.first : null;
         
-        bool defaultChecked = member.status != 'MESS OFF';
+        final isMessOff = member.status == 'MESS OFF';
+        final isMealDisabled = !member.mealUnitEnabled;
+        final shouldDisable = isMessOff || isMealDisabled;
 
         newRows.add(MealAttendanceRow(
           member: member,
-          breakfast: existingMeal?.breakfastTaken ?? defaultChecked,
-          lunch: existingMeal?.lunchTaken ?? false,
-          dinner: existingMeal?.dinnerTaken ?? defaultChecked,
-          guestCount: existingMeal?.guestCount ?? 0,
+          // Mess-off members: always false (no units), shown as disabled
+          breakfast: shouldDisable ? false : (existingMeal?.breakfastTaken ?? true),
+          lunch: shouldDisable ? false : (existingMeal?.lunchTaken ?? false),
+          dinner: shouldDisable ? false : (existingMeal?.dinnerTaken ?? true),
+          guestCount: shouldDisable ? 0 : (existingMeal?.guestCount ?? 0),
         ));
       }
 
@@ -124,9 +127,6 @@ class _DailyMealAttendanceScreenState extends State<DailyMealAttendanceScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Unit attendance saved successfully!')),
         );
-        if (Navigator.canPop(context)) {
-          Navigator.pop(context, true);
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -197,16 +197,46 @@ class _DailyMealAttendanceScreenState extends State<DailyMealAttendanceScreen> {
                         ],
                         rows: List.generate(rows.length, (index) {
                           final row = rows[index];
-                          return DataRow(cells: [
-                            DataCell(Text('${index + 1}')),
+                          final isMessOff = row.member.status == 'MESS OFF';
+                          final isMealDisabled = !row.member.mealUnitEnabled;
+                          final shouldDisable = isMessOff || isMealDisabled;
+                          return DataRow(
+                            color: shouldDisable
+                                ? WidgetStateProperty.all(Colors.red.shade50)
+                                : null,
+                            cells: [
+                            DataCell(Text(
+                              '${index + 1}',
+                              style: TextStyle(
+                                color: shouldDisable ? Colors.grey : null,
+                              ),
+                            )),
                             DataCell(
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(row.member.fullName, style: const TextStyle(fontWeight: FontWeight.w500)),
-                                  if (row.member.status == 'MESS OFF')
-                                    const Text('MESS OFF', style: TextStyle(fontSize: 10, color: Colors.red)),
+                                  Text(
+                                    row.member.fullName,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      color: shouldDisable ? Colors.grey : null,
+                                      decoration: shouldDisable ? TextDecoration.lineThrough : null,
+                                    ),
+                                  ),
+                                  if (shouldDisable)
+                                    Container(
+                                      margin: const EdgeInsets.only(top: 2),
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade100,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'UNITS DISABLED',
+                                        style: TextStyle(fontSize: 10, color: Colors.red, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
                                 ],
                               )
                             ),
@@ -214,7 +244,7 @@ class _DailyMealAttendanceScreenState extends State<DailyMealAttendanceScreen> {
                               Checkbox(
                                 value: row.breakfast,
                                 activeColor: Colors.green,
-                                onChanged: row.member.status == 'MESS OFF' ? null : (val) {
+                                onChanged: shouldDisable ? null : (val) {
                                   if (val != null) setState(() => row.breakfast = val);
                                 },
                               )
@@ -223,7 +253,7 @@ class _DailyMealAttendanceScreenState extends State<DailyMealAttendanceScreen> {
                               Checkbox(
                                 value: row.lunch,
                                 activeColor: Colors.green,
-                                onChanged: row.member.status == 'MESS OFF' ? null : (val) {
+                                onChanged: shouldDisable ? null : (val) {
                                   if (val != null) setState(() => row.lunch = val);
                                 },
                               )
@@ -232,7 +262,7 @@ class _DailyMealAttendanceScreenState extends State<DailyMealAttendanceScreen> {
                               Checkbox(
                                 value: row.dinner,
                                 activeColor: Colors.green,
-                                onChanged: row.member.status == 'MESS OFF' ? null : (val) {
+                                onChanged: shouldDisable ? null : (val) {
                                   if (val != null) setState(() => row.dinner = val);
                                 },
                               )
@@ -244,7 +274,7 @@ class _DailyMealAttendanceScreenState extends State<DailyMealAttendanceScreen> {
                                   initialValue: row.guestCount > 0 ? row.guestCount.toString() : '',
                                   keyboardType: TextInputType.number,
                                   textAlign: TextAlign.center,
-                                  enabled: row.member.status != 'MESS OFF',
+                                  enabled: !shouldDisable,
                                   decoration: InputDecoration(
                                     contentPadding: const EdgeInsets.symmetric(vertical: 8),
                                     isDense: true,

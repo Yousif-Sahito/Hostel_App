@@ -48,20 +48,40 @@ enum GlobalMessStatus {
   OFF
 }
 
+enum NotificationType {
+  MESS_OFF_ON
+  MESS_OFF_CANCELLED
+  PAYMENT_RECEIVED
+  PAYMENT_OVERDUE_20
+  PAYMENT_OVERDUE_30
+}
+
 model User {
   id               Int            @id @default(autoincrement())
   fullName         String
-  email            String?        @unique
-  cmsId            String?        @unique
+  email            String?         @unique
+  cmsId            String?         @unique
   phone            String?
   passwordHash     String
   role             UserRole
   status           UserStatus     @default(ACTIVE)
+  hostelId         Int?
+  mealUnitEnabled  Boolean        @default(true)
+  advanceBalance   Float          @default(0)
   roomId           Int?
   joiningDate      DateTime?
+  fcmToken         String?
+  passwordResetTokenHash String?
+  passwordResetExpiresAt DateTime?
+  passwordResetUsedAt    DateTime?
+  emailVerificationTokenHash String?
+  emailVerificationExpiresAt DateTime?
+  emailVerifiedAt           DateTime?
+  tokenVersion          Int            @default(0)
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
+  hostel           Hostel?        @relation(fields: [hostelId], references: [id], onDelete: Cascade)
   room             Room?          @relation(fields: [roomId], references: [id])
   createdMenus     WeeklyMenu[]   @relation("WeeklyMenuCreatedBy")
   mealEntries      MealEntry[]
@@ -72,22 +92,29 @@ model User {
   bills            Bill[]
   payments         Payment[]      @relation("PaymentUser")
   receivedPayments Payment[]      @relation("PaymentReceivedBy")
+  notifications    Notification[]
+  deviceTokens     DeviceToken[]
+
 }
 
 model Room {
   id            Int        @id @default(autoincrement())
-  roomNumber    String     @unique
+  hostelId      Int?
+  roomNumber    String
   capacity      Int
   occupiedCount Int        @default(0)
   status        RoomStatus @default(AVAILABLE)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
+  hostel        Hostel?    @relation(fields: [hostelId], references: [id], onDelete: Cascade)
   users         User[]
+  @@unique([hostelId, roomNumber])
 }
 
 model HostelSetting {
   id             Int              @id @default(autoincrement())
+  hostelId       Int?             @unique
   hostelName     String
   breakfastPrice Float
   lunchPrice     Float
@@ -96,15 +123,19 @@ model HostelSetting {
   messStatus     GlobalMessStatus @default(ON)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+
+  hostel         Hostel?          @relation(fields: [hostelId], references: [id], onDelete: Cascade)
 }
 
 model WeeklyMenu {
   id            Int              @id @default(autoincrement())
+  hostelId      Int?
   weekStartDate DateTime
   createdBy     Int
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
+  hostel        Hostel?          @relation(fields: [hostelId], references: [id], onDelete: Cascade)
   creator       User             @relation("WeeklyMenuCreatedBy", fields: [createdBy], references: [id])
   items         WeeklyMenuItem[]
 }
@@ -124,6 +155,7 @@ model WeeklyMenuItem {
 
 model MealEntry {
   id              Int       @id @default(autoincrement())
+  hostelId        Int?
   userId          Int
   mealDate        DateTime
   breakfastTaken  Boolean   @default(false)
@@ -134,13 +166,15 @@ model MealEntry {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  hostel          Hostel?   @relation(fields: [hostelId], references: [id], onDelete: Cascade)
   user            User      @relation(fields: [userId], references: [id])
 
-  @@unique([userId, mealDate])
+  @@unique([hostelId, userId, mealDate])
 }
 
 model MessOffPeriod {
   id          Int            @id @default(autoincrement())
+  hostelId    Int?
   userId      Int
   fromDate    DateTime
   toDate      DateTime
@@ -150,12 +184,14 @@ model MessOffPeriod {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
+  hostel      Hostel?        @relation(fields: [hostelId], references: [id], onDelete: Cascade)
   user        User           @relation(fields: [userId], references: [id])
   creator     User           @relation("MessOffCreatedBy", fields: [createdBy], references: [id])
 }
 
 model Attendance {
   id              Int       @id @default(autoincrement())
+  hostelId        Int?
   userId          Int
   attendanceDate  DateTime
   isPresent       Boolean   @default(true)
@@ -163,13 +199,15 @@ model Attendance {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  hostel          Hostel?   @relation(fields: [hostelId], references: [id], onDelete: Cascade)
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, attendanceDate])
+  @@unique([hostelId, userId, attendanceDate])
 }
 
 model HelperCharge {
   id               Int       @id @default(autoincrement())
+  hostelId         Int?
   month            Int
   year             Int
   totalAmount      Float
@@ -179,11 +217,13 @@ model HelperCharge {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
+  hostel           Hostel?   @relation(fields: [hostelId], references: [id], onDelete: Cascade)
   creator          User      @relation("HelperChargeCreatedBy", fields: [createdBy], references: [id])
 }
 
 model Bill {
   id              Int           @id @default(autoincrement())
+  hostelId        Int?
   userId          Int
   month           Int
   year            Int
@@ -200,14 +240,16 @@ model Bill {
   generatedAt     DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
+  hostel          Hostel?       @relation(fields: [hostelId], references: [id], onDelete: Cascade)
   user            User          @relation(fields: [userId], references: [id])
   payments        Payment[]
 
-  @@unique([userId, month, year])
+  @@unique([hostelId, userId, month, year])
 }
 
 model Payment {
   id             Int            @id @default(autoincrement())
+  hostelId       Int?
   billId         Int
   userId         Int
   amount         Float
@@ -218,7 +260,65 @@ model Payment {
   receivedBy     Int?
   createdAt      DateTime       @default(now())
 
+  hostel         Hostel?        @relation(fields: [hostelId], references: [id], onDelete: Cascade)
   bill           Bill           @relation(fields: [billId], references: [id], onDelete: Cascade)
   user           User           @relation("PaymentUser", fields: [userId], references: [id])
   receiver       User?          @relation("PaymentReceivedBy", fields: [receivedBy], references: [id])
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  hostelId  Int?
+  userId    Int
+  title     String
+  body      String
+  type      NotificationType
+  data      Json?
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  hostel    Hostel?          @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model DeviceToken {
+  id         Int      @id @default(autoincrement())
+  hostelId   Int?
+  userId     Int
+  token      String   @unique
+  platform   String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  lastSeenAt DateTime @default(now())
+
+  hostel     Hostel?  @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+}
+
+model Hostel {
+  id             Int            @id @default(autoincrement())
+  name           String
+  normalizedName String         @unique
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  users          User[]
+  rooms          Room[]
+  settings       HostelSetting?
+  weeklyMenus    WeeklyMenu[]
+  mealEntries    MealEntry[]
+  messOffPeriods MessOffPeriod[]
+  attendances    Attendance[]
+  helperCharges  HelperCharge[]
+  bills          Bill[]
+  payments       Payment[]
+  notifications  Notification[]
+  deviceTokens   DeviceToken[]
 }

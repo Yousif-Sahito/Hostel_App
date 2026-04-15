@@ -17,7 +17,6 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
 
   late final TextEditingController roomNumberController;
   late final TextEditingController capacityController;
-  late final TextEditingController occupiedCountController;
 
   String status = 'AVAILABLE';
   bool isLoading = false;
@@ -34,14 +33,7 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
     capacityController = TextEditingController(
       text: widget.room?.capacity.toString() ?? '',
     );
-    occupiedCountController = TextEditingController(
-      text: isEdit ? widget.room?.occupiedCount.toString() : '',
-    );
-
     status = widget.room?.status ?? 'AVAILABLE';
-
-    // Auto-update status when occupied count or capacity changes
-    occupiedCountController.addListener(_updateStatus);
     capacityController.addListener(_updateStatus);
   }
 
@@ -49,14 +41,13 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
   void dispose() {
     roomNumberController.dispose();
     capacityController.dispose();
-    occupiedCountController.dispose();
     super.dispose();
   }
 
   void _updateStatus() {
     try {
-      final occupied = int.tryParse(occupiedCountController.text.trim()) ?? 0;
       final capacity = int.tryParse(capacityController.text.trim()) ?? 0;
+      final occupied = widget.room?.occupiedCount ?? 0;
 
       if (capacity > 0 && occupied >= capacity) {
         setState(() => status = 'FULL');
@@ -75,10 +66,16 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
 
     try {
       final capacity = int.parse(capacityController.text.trim());
-      final occupiedCount = int.parse(occupiedCountController.text.trim());
+      final occupiedCount = widget.room?.occupiedCount ?? 0;
 
-      if (occupiedCount > capacity) {
-        throw Exception('Occupied count cannot be greater than capacity');
+      if (capacity <= 0) {
+        throw Exception('Capacity must be greater than 0');
+      }
+
+      if (isEdit && occupiedCount > capacity) {
+        throw Exception(
+          'Capacity cannot be less than current occupied members ($occupiedCount)',
+        );
       }
 
       if (isEdit) {
@@ -93,7 +90,6 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
         await RoomService.addRoom(
           roomNumber: roomNumberController.text.trim(),
           capacity: capacity,
-          occupiedCount: occupiedCount,
           status: status,
         );
       }
@@ -176,11 +172,17 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
                     keyboardType: TextInputType.number,
                     hintText: 'e.g. 4',
                   ),
-                  _textField(
-                    'Occupied Count',
-                    occupiedCountController,
-                    keyboardType: TextInputType.number,
-                    hintText: 'e.g. 0',
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: 'Occupied Members',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text('${widget.room?.occupiedCount ?? 0}'),
+                    ),
                   ),
                   DropdownButtonFormField<String>(
                     initialValue: status,

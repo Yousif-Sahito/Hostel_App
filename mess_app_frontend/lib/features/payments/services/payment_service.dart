@@ -56,17 +56,18 @@ class PaymentService {
     }
   }
 
-  static Future<void> addPayment({
+  static Future<Map<String, dynamic>> addPayment({
     required int billId,
     required int userId,
     required double amount,
     required String paymentMethod,
     required String paymentDate,
+    String paymentType = 'REGULAR',
     String? referenceNo,
     String? notes,
   }) async {
     try {
-      await DioClient.dio.post(
+      final response = await DioClient.dio.post(
         '/payments',
         data: {
           'billId': billId,
@@ -74,11 +75,13 @@ class PaymentService {
           'amount': amount,
           'paymentMethod': paymentMethod,
           'paymentDate': paymentDate,
+          'paymentType': paymentType,
           'referenceNo': referenceNo,
           'notes': notes,
         },
         options: await _authOptions(),
       );
+      return response.data['data'] as Map<String, dynamic>? ?? {};
     } on DioException catch (e) {
       throw _handleError(e);
     }

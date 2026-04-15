@@ -2,6 +2,7 @@ class BillModel {
   final int? id;
   final int userId;
   final String? userName;
+  final double userAdvanceBalance;
   final int month;
   final int year;
   final int breakfastUnits;
@@ -19,6 +20,7 @@ class BillModel {
     this.id,
     required this.userId,
     this.userName,
+    required this.userAdvanceBalance,
     required this.month,
     required this.year,
     required this.breakfastUnits,
@@ -39,6 +41,9 @@ class BillModel {
       userId: json['userId'] ?? 0,
       userName:
           json['user']?['fullName']?.toString() ?? json['userName']?.toString(),
+      userAdvanceBalance:
+          (json['user']?['advanceBalance'] ?? json['userAdvanceBalance'] ?? 0)
+              .toDouble(),
       month: json['month'] ?? 0,
       year: json['year'] ?? 0,
       breakfastUnits: json['breakfastUnits'] ?? 0,
@@ -57,6 +62,7 @@ class BillModel {
   Map<String, dynamic> toJson() {
     return {
       'userId': userId,
+      'userAdvanceBalance': userAdvanceBalance,
       'month': month,
       'year': year,
       'breakfastUnits': breakfastUnits,

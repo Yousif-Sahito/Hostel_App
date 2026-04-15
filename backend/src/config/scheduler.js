@@ -7,7 +7,7 @@ export const scheduleUnpaidBillNotifications = () => {
   cron.schedule('0 8 * * *', async () => {
     logger.info('Running scheduled unpaid bill notification job...');
     try {
-      await sendBatchUnpaidBillNotifications(30);
+      await sendBatchUnpaidBillNotifications();
       logger.info('Unpaid bill notification job completed successfully');
     } catch (error) {
       logger.error('Error in unpaid bill notification job:', error);

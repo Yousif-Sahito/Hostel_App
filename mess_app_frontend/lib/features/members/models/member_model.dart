@@ -6,6 +6,8 @@ class MemberModel {
   final String? phone;
   final String role;
   final String status;
+  final bool mealUnitEnabled;
+  final double advanceBalance;
   final int? roomId;
   final String? joiningDate;
 
@@ -17,6 +19,8 @@ class MemberModel {
     this.phone,
     required this.role,
     required this.status,
+    required this.mealUnitEnabled,
+    required this.advanceBalance,
     this.roomId,
     this.joiningDate,
   });
@@ -30,6 +34,8 @@ class MemberModel {
       phone: json['phone'],
       role: json['role'] ?? 'MEMBER',
       status: json['status'] ?? 'ACTIVE',
+      mealUnitEnabled: json['mealUnitEnabled'] ?? true,
+      advanceBalance: (json['advanceBalance'] ?? 0).toDouble(),
       roomId: json['roomId'],
       joiningDate: json['joiningDate']?.toString(),
     );
@@ -43,6 +49,8 @@ class MemberModel {
       'phone': phone,
       'role': role,
       'status': status,
+      'mealUnitEnabled': mealUnitEnabled,
+      'advanceBalance': advanceBalance,
       'roomId': roomId,
       'joiningDate': joiningDate,
     };

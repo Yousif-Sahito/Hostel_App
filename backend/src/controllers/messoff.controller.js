@@ -3,7 +3,9 @@ import { sendMessOffNotification } from "../services/notification.service.js";
 
 export const getMessOffList = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const data = await prisma.messOffPeriod.findMany({
+      where: { hostelId },
       include: {
         user: true,
         creator: true
@@ -21,13 +23,14 @@ export const getMessOffList = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to fetch mess off periods" : error.message
     });
   }
 };
 
 export const createMessOff = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const { userId, fromDate, toDate, reason } = req.body;
 
     if (!userId || !fromDate || !toDate) {
@@ -39,10 +42,10 @@ export const createMessOff = async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { id: Number(userId) },
-      select: { id: true, fullName: true }
+      select: { id: true, fullName: true, hostelId: true }
     });
 
-    if (!user) {
+    if (!user || user.hostelId !== hostelId) {
       return res.status(404).json({
         success: false,
         message: "User not found"
@@ -52,6 +55,7 @@ export const createMessOff = async (req, res) => {
     const data = await prisma.messOffPeriod.create({
       data: {
         userId: Number(userId),
+        hostelId,
         fromDate: new Date(fromDate),
         toDate: new Date(toDate),
         reason: reason || null,
@@ -71,13 +75,14 @@ export const createMessOff = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to create mess off period" : error.message
     });
   }
 };
 
 export const updateMessOff = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const id = Number(req.params.id);
     const { fromDate, toDate, reason, status } = req.body;
 
@@ -99,7 +104,7 @@ export const updateMessOff = async (req, res) => {
       }
     });
 
-    if (!existing) {
+    if (!existing || existing.hostelId !== hostelId) {
       return res.status(404).json({
         success: false,
         message: "Mess off period not found"
@@ -129,16 +134,17 @@ export const updateMessOff = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to update mess off period" : error.message
     });
   }
 };
 
 export const getMessOffByMember = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const userId = Number(req.params.id);
     const data = await prisma.messOffPeriod.findMany({
-      where: { userId },
+      where: { userId, hostelId },
       include: {
         user: true,
         creator: true
@@ -156,14 +162,24 @@ export const getMessOffByMember = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to delete mess off period" : error.message
     });
   }
 };
 
 export const deleteMessOff = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const id = Number(req.params.id);
+    const existing = await prisma.messOffPeriod.findFirst({
+      where: { id, hostelId }
+    });
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        message: "Mess off period not found"
+      });
+    }
     
     await prisma.messOffPeriod.delete({
       where: { id }
@@ -176,19 +192,21 @@ export const deleteMessOff = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to fetch active mess off list" : error.message
     });
   }
 };
 
 export const getTomorrowMessOffList = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(0, 0, 0, 0);
 
     const data = await prisma.messOffPeriod.findMany({
       where: {
+        hostelId,
         status: "ACTIVE",
         fromDate: { lte: tomorrow },
         toDate: { gte: tomorrow }
@@ -213,7 +231,7 @@ export const getTomorrowMessOffList = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to fetch monthly mess off" : error.message
     });
   }
 };
@@ -221,6 +239,7 @@ export const getTomorrowMessOffList = async (req, res) => {
 export const toggleMessStatus = async (req, res) => {
   try {
     const userId = req.user.id;
+    const hostelId = req.user.hostelId;
     const now = new Date();
     
     // Set 1 PM deadline for today in local time
@@ -242,6 +261,7 @@ export const toggleMessStatus = async (req, res) => {
 
     const existing = await prisma.messOffPeriod.findFirst({
       where: {
+        hostelId,
         userId,
         status: "ACTIVE",
         fromDate: { lte: tomorrow },
@@ -255,6 +275,13 @@ export const toggleMessStatus = async (req, res) => {
         where: { id: existing.id },
         data: { status: "CANCELLED" }
       });
+      const member = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, fullName: true }
+      });
+      if (member) {
+        await sendMessOffNotification(member.id, member.fullName, "CANCELLED");
+      }
 
       res.json({
         success: true,
@@ -266,6 +293,7 @@ export const toggleMessStatus = async (req, res) => {
       await prisma.messOffPeriod.create({
         data: {
           userId,
+          hostelId,
           fromDate: tomorrow,
           toDate: tomorrow,
           reason: "Self Toggled",
@@ -273,6 +301,13 @@ export const toggleMessStatus = async (req, res) => {
           createdBy: userId
         }
       });
+      const member = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, fullName: true }
+      });
+      if (member) {
+        await sendMessOffNotification(member.id, member.fullName, "ACTIVE");
+      }
 
       res.json({
         success: true,
@@ -283,7 +318,7 @@ export const toggleMessStatus = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to toggle tomorrow mess off" : error.message
     });
   }
 };

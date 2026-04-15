@@ -1,5 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class FCMService {
@@ -15,7 +16,7 @@ class FCMService {
 
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
-  Future<void> initialize() async {
+  Future<void> initialize({Function(Map<String, dynamic>)? onNotificationTap}) async {
     // Skip Firebase initialization on web
     if (kIsWeb) {
       debugPrint('⚠️ FCM Service skipped on Web platform');
@@ -42,7 +43,16 @@ class FCMService {
         android: androidInitSettings,
       );
 
-      await _localNotifications.initialize(initSettings);
+      await _localNotifications.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: (response) {
+          if (response.payload == null || response.payload!.isEmpty) return;
+          try {
+            final parsed = jsonDecode(response.payload!) as Map<String, dynamic>;
+            onNotificationTap?.call(parsed);
+          } catch (_) {}
+        },
+      );
 
       await _localNotifications
           .resolvePlatformSpecificImplementation<
@@ -63,12 +73,14 @@ class FCMService {
       // App opened from notification
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
         debugPrint('Notification clicked: ${message.data}');
+        onNotificationTap?.call(message.data);
       });
 
       // If app launched by tapping notification
       final initialMessage = await _messaging.getInitialMessage();
       if (initialMessage != null) {
         debugPrint('App opened from terminated state by notification');
+        onNotificationTap?.call(initialMessage.data);
       }
       
       debugPrint('✅ FCM Service initialized successfully');
@@ -109,6 +121,7 @@ class FCMService {
       notification.title,
       notification.body,
       details,
+      payload: jsonEncode(message.data),
     );
   }
 }

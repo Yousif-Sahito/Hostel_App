@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import dotenv from "dotenv";
+import rateLimit from "express-rate-limit";
 
 import authRoutes from "./src/routes/auth.routes.js";
 import memberRoutes from "./src/routes/member.routes.js";
@@ -16,9 +17,11 @@ import helperChargeRoutes from "./src/routes/helpercharge.routes.js";
 import attendanceRoutes from "./src/routes/attendance.routes.js";
 import settingsRoutes from "./src/routes/settings.routes.js";
 import dashboardRoutes from "./src/routes/dashboard.routes.js";
+import notificationRoutes from "./src/routes/notification.routes.js";
 import { notFoundHandler, errorHandler } from "./src/middleware/error.middleware.js";
 import { connectDatabase } from "./src/config/database.js";
 import scheduleUnpaidBillNotifications from "./src/config/scheduler.js";
+import { env } from "./src/config/environment.js";
 
 dotenv.config();
 
@@ -27,11 +30,41 @@ const app = express(); // ✅ FIRST create app
 // Security middleware
 app.use(helmet());
 
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false
+}));
+
 // Logging middleware
 app.use(morgan("combined"));
 
 // CORS and body parsing
-app.use(cors());
+const allowedOrigins = env.CORS_ORIGIN
+  ? env.CORS_ORIGIN.split(",").map((origin) => origin.trim()).filter(Boolean)
+  : ["http://localhost:56725", "http://127.0.0.1:56725"];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+
+    // In development, allow any localhost origin
+    if (env.NODE_ENV !== "production") {
+      if (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
+        return callback(null, true);
+      }
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    console.log(`CORS blocked for origin: ${origin}`);
+    return callback(null, false);
+  }
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -54,6 +87,7 @@ app.use("/api/helpercharges", helperChargeRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/dashboard", dashboardRoutes); // ✅ AFTER app is created
+app.use("/api/notifications", notificationRoutes);
 
 // Error handling middleware (must be after all routes)
 app.use(notFoundHandler);

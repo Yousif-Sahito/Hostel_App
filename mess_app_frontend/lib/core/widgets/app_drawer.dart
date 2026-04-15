@@ -190,6 +190,15 @@ class AppDrawer extends StatelessWidget {
                     context.push(AppRoutes.profile);
                   },
                 ),
+                _drawerItem(
+                  context,
+                  icon: Icons.notifications_outlined,
+                  title: 'Notifications',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(AppRoutes.notifications);
+                  },
+                ),
               ],
             ),
           ),
@@ -215,7 +224,22 @@ class AppDrawer extends StatelessWidget {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    int badgeCount = 0,
   }) {
-    return ListTile(leading: Icon(icon), title: Text(title), onTap: onTap);
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      trailing: badgeCount > 0
+          ? CircleAvatar(
+              radius: 10,
+              backgroundColor: Colors.red,
+              child: Text(
+                '$badgeCount',
+                style: const TextStyle(fontSize: 11, color: Colors.white),
+              ),
+            )
+          : null,
+      onTap: onTap,
+    );
   }
 }

@@ -9,7 +9,9 @@ const calculatePaymentStatus = (paidAmount, dueAmount) => {
 
 export const getBills = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const bills = await prisma.bill.findMany({
+      where: { hostelId },
       include: {
         user: true,
         payments: true
@@ -29,13 +31,14 @@ export const getBills = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to fetch bills" : error.message
     });
   }
 };
 
 export const generateBills = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const { month, year, memberId } = req.body;
 
     if (!month || !year) {
@@ -56,7 +59,7 @@ export const generateBills = async (req, res) => {
       } else {
         // Try to find by CMS ID
         const member = await prisma.user.findFirst({
-          where: { cmsId: memberStr }
+          where: { cmsId: memberStr, hostelId }
         });
 
         if (member) {
@@ -73,7 +76,8 @@ export const generateBills = async (req, res) => {
     const result = await generateMonthlyBillsService(
       Number(month),
       Number(year),
-      parsedMemberId
+      parsedMemberId,
+      hostelId
     );
 
     return res.status(201).json({
@@ -84,18 +88,20 @@ export const generateBills = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to fetch bill" : error.message
     });
   }
 };
 
 export const getBillsByMember = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const memberId = Number(req.params.id);
 
     const bills = await prisma.bill.findMany({
       where: {
-        userId: memberId
+        userId: memberId,
+        hostelId
       },
       include: {
         user: true,
@@ -116,7 +122,7 @@ export const getBillsByMember = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to generate bills" : error.message
     });
   }
 };
@@ -125,7 +131,8 @@ export const getMyBills = async (req, res) => {
   try {
     const bills = await prisma.bill.findMany({
       where: {
-        userId: req.user.id
+        userId: req.user.id,
+        hostelId: req.user.hostelId
       },
       include: {
         payments: true
@@ -145,18 +152,19 @@ export const getMyBills = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to update bill" : error.message
     });
   }
 };
 
 export const updateBill = async (req, res) => {
   try {
+    const hostelId = req.user.hostelId;
     const id = Number(req.params.id);
     const { extraCharges, paidAmount } = req.body;
 
-    const existing = await prisma.bill.findUnique({
-      where: { id }
+    const existing = await prisma.bill.findFirst({
+      where: { id, hostelId }
     });
 
     if (!existing) {
@@ -216,7 +224,7 @@ export const updateBill = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === "production" ? "Failed to fetch bill summary" : error.message
     });
   }
 };
