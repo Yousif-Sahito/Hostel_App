@@ -112,7 +112,6 @@ class _MemberBillScreenState extends State<MemberBillScreen> {
     final lunchPrice = settings?.lunchPrice ?? 0;
     final dinnerPrice = settings?.dinnerPrice ?? 0;
     final guestMealPrice = settings?.guestMealPrice ?? 0;
-    final helperCharge = settings?.helperCharge ?? widget.bill.helperCharge;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Bill Detail')),
@@ -135,7 +134,7 @@ class _MemberBillScreenState extends State<MemberBillScreen> {
                 ],
                 _item(
                   'Helper Charge',
-                  'Rs. ${(settings?.helperCharge ?? bill.helperCharge).toStringAsFixed(0)}',
+                  'Rs. ${bill.helperCharge.toStringAsFixed(0)}',
                 ),
 
                 const SizedBox(height: 16),

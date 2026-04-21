@@ -35,6 +35,6 @@ router.post("/resend-verification", resendVerificationRateLimit, resendVerificat
 router.post("/change-password", protect, changePassword);
 router.post("/logout", protect, logout);
 router.post("/update-fcm-token", protect, updateFCMToken);
-router.delete("/delete-account", protect, allowRoles("ADMIN"), deleteAccount);
+router.delete("/delete-account", protect, deleteAccount);
 
 export default router;

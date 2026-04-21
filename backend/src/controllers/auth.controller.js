@@ -7,7 +7,8 @@ import {
   resetPasswordWithToken,
   verifyEmailWithToken,
   resendVerificationEmail,
-  revokeUserSessions
+  revokeUserSessions,
+  deleteUserAccount
 } from "../services/auth.service.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 import { prisma } from "../config/prisma.js";
@@ -226,30 +227,8 @@ export const deleteAccount = async (req, res) => {
       return sendError(res, "User authentication failed", 401);
     }
 
-    if (!req.user.hostelId) {
-      return sendError(res, "Hostel context missing for user.", 403);
-    }
-
-    if (req.user.role !== "ADMIN") {
-      return sendError(res, "Access denied.", 403);
-    }
-
-    const hostelId = req.user.hostelId;
-    const hostel = await prisma.hostel.findFirst({
-      where: { id: hostelId },
-      select: { id: true }
-    });
-
-    if (!hostel) {
-      return sendError(res, "Hostel not found", 404);
-    }
-
-    // Deleting hostel will cascade-delete all tenant data via FK onDelete: Cascade.
-    await prisma.hostel.delete({
-      where: { id: hostelId }
-    });
-
-    return sendSuccess(res, "Account deleted successfully");
+    const result = await deleteUserAccount(req.user.id);
+    return sendSuccess(res, result.message);
   } catch (error) {
     return handleControllerError(res, error, "Unable to delete account.", 400);
   }

@@ -325,11 +325,12 @@ export const registerUser = async ({ fullName, email, phone, password, hostelNam
         phone: phone || null,
         passwordHash: hashedPassword,
         role: userRole,
-        status: "INACTIVE",
+        status: "ACTIVE",
         hostelId: hostel.id,
         joiningDate: new Date(),
-        emailVerificationTokenHash: verifyTokenHash,
-        emailVerificationExpiresAt: verifyExpiresAt
+        emailVerifiedAt: new Date(),
+        emailVerificationTokenHash: null,
+        emailVerificationExpiresAt: null
       }
     });
   });
@@ -341,14 +342,17 @@ export const registerUser = async ({ fullName, email, phone, password, hostelNam
     return env.FRONTEND_URL || "http://localhost:56725/#";
   };
 
-  const baseUrl = determineFrontendUrl(requestOrigin);
-  const verifyUrl = `${baseUrl}/verify-email?token=${plainVerifyToken}`;
-  await sendEmailVerificationEmail({
-    to: normalizedEmail,
-    fullName,
-    verifyUrl,
-    expiresMinutes: EMAIL_VERIFY_EXPIRES_MINUTES
-  });
+  // In development mode, skip email verification. In production, send verification email.
+  if (env.NODE_ENV === "production") {
+    const baseUrl = determineFrontendUrl(requestOrigin);
+    const verifyUrl = `${baseUrl}/verify-email?token=${plainVerifyToken}`;
+    await sendEmailVerificationEmail({
+      to: normalizedEmail,
+      fullName,
+      verifyUrl,
+      expiresMinutes: EMAIL_VERIFY_EXPIRES_MINUTES
+    });
+  }
 
   // Generate JWT token for the new user
   const token = signAccessToken(user);
@@ -364,7 +368,7 @@ export const registerUser = async ({ fullName, email, phone, password, hostelNam
       hostelId: user.hostelId,
       status: user.status
     },
-    message: "Account created. Please verify your email."
+    message: "Account created successfully. You can now login."
   };
 };
 
@@ -461,4 +465,59 @@ export const revokeUserSessions = async (userId) => {
   });
 
   return true;
+};
+
+export const deleteUserAccount = async (userId) => {
+  if (!userId) {
+    throw new Error("User ID is required");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, hostelId: true }
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  // Use transaction to ensure data integrity
+  await prisma.$transaction(async (tx) => {
+    // Delete all user-related data in proper order (respecting foreign keys)
+    
+    // Delete notifications for this user
+    await tx.notification.deleteMany({
+      where: { userId: userId }
+    });
+
+    // Delete attendance records for this user
+    await tx.attendance.deleteMany({
+      where: { userId: userId }
+    });
+
+    // Delete bills for this user
+    await tx.bill.deleteMany({
+      where: { userId: userId }
+    });
+
+    // Delete meal requests for this user
+    await tx.mealRequest.deleteMany({
+      where: { userId: userId }
+    });
+
+    // Delete mess off periods for this user
+    await tx.messOffPeriod.deleteMany({
+      where: { userId: userId }
+    });
+
+    // Delete the user itself
+    await tx.user.delete({
+      where: { id: userId }
+    });
+  });
+
+  return {
+    message: "Account deleted successfully",
+    email: user.email
+  };
 };
